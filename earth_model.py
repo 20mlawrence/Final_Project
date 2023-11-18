@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 # coding=utf8
 
-"""
-Support for PREM-like 1D Earth models
+## Support for PREM-like 1D Earth models
 
-"""
 
 import numpy as np
 import scipy.integrate as spint
@@ -104,17 +102,12 @@ class Prem(object):
         self.moi_poly.coeffs = self.moi_poly.coeffs * 4.0 * (2/3) * np.pi  
         
     def density(self, r, break_down=False):
-        """
-        Evaluate density in kg/m**3 at radii r (in km)
-        """
+        #Evaluate density in kg/m**3 at radii r (in km)
         return self.density_poly(r, break_down=break_down)
 
     def vs(self, r, t=1, break_down=False):
-        """
-        Evaluate s-wave velocity (in km/s) at radius r (in km).
-
-        Optionally corrected for period (t), default is 1 s.
-        """
+        #Evaluate s-wave velocity (in km/s) at radius r (in km).
+        #Optionally corrected for period (t), default is 1 s.
         vs = self.vs_poly(r, break_down=break_down)
         if t != 1:
             qm = self.qm_poly(r, break_down=break_down)
@@ -123,11 +116,9 @@ class Prem(object):
         return vs
     
     def vp(self, r, t=1, break_down=False):
-        """
-        Evaluate p-wave velocity (in km/s) at radius r (in km).
+        #Evaluate p-wave velocity (in km/s) at radius r (in km).
 
-        Optionally corrected for period (t), default is 1 s.
-        """
+        #Optionally corrected for period (t), default is 1 s.
         vp = self.vp_poly(r, break_down=break_down)
         if t != 1:
             qm = self.qm_poly(r, break_down=break_down)
@@ -147,26 +138,20 @@ class Prem(object):
         return qm
 
     def bulk_modulus(self, r):
-        """
-        Evaluate bulk modulus (in GPa) at radius r (in km)
-        """
+        #Evaluate bulk modulus (in GPa) at radius r (in km)
         vp = self.vp_poly(r) * 1000.0 # m/s
         mu = self.shear_modulus(r)
         density = self.density_poly(r)
         return ((vp**2 * density) / 1e9) - mu
 
     def shear_modulus(self, r):
-        """
-        Evaluate shear modulus (in GPa) at radius r (in km)
-        """
+        #Evaluate shear modulus (in GPa) at radius r (in km)
         vs = self.vs_poly(r) * 1000.0 # m/s
         density = self.density_poly(r)
         return (vs**2 * density) / 1e9     
 
     def mass(self, r, r_inner=0.0):
-        """
-        Evaluate mass inside radius r (in km)
-        """
+        #Evaluate mass inside radius r (in km)
         if np.ndim(r) == 0:
             m = self.mass_poly.integrate(r_inner,r)
         else:
@@ -179,15 +164,13 @@ class Prem(object):
         return m
     
     def moment_or_inertia(self, r, r_inner=0.0):
-        """
-        Evaluate moment of inertia inside radius r (in km)
+        #Evaluate moment of inertia inside radius r (in km)
         
-        Return a tuple of moment of inertia (in kg m^2) and
-        the moment of inertia factor (I/MR**2, dimensionless)
-        which is 0.4 for a uniform density body, and decreases
-        as the core becomes more dense than the crust/mantle.
+        #Return a tuple of moment of inertia (in kg m^2) and
+        #the moment of inertia factor (I/MR**2, dimensionless)
+        #which is 0.4 for a uniform density body, and decreases
+        #as the core becomes more dense than the crust/mantle.
 
-        """
         if np.ndim(r) == 0:
             moi = self.moi_poly.integrate(r_inner,r)
         else:
@@ -204,9 +187,7 @@ class Prem(object):
         return moi, moif
     
     def gravity(self, r):
-        """
-        Evaluate acceleration due to gravity at radius r in m/s^2
-        """
+        #Evaluate acceleration due to gravity at radius r in m/s^2
         G = 6.6743E-11
         if np.ndim(r) == 0:
             g = self.mass_poly.integrate(0.0,r)/((r*1000)**2)*G
@@ -221,9 +202,7 @@ class Prem(object):
         return g
     
     def pressure(self, r):
-        """
-        Evaluate pressure (in GPa) at radius r (in km)
-        """
+        #Evaluate pressure (in GPa) at radius r (in km)
         # NB: this is done numerically, because otherise
         # I need to work out how to express g as a polynomial,
         # multiply this by rho, then do the integral inwards.
@@ -362,6 +341,7 @@ class Prem(object):
         and is ordered such that element 0 is at the center of the planet
         and the last element (element -1) is at the surface.
         """
+        
         # Keep the data as we get it
         radii = np.array([])
         depths = np.array([])

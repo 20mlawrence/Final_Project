@@ -1,35 +1,16 @@
+#Piecewise PREM
 
-"""
-Piecewise polynomials like PREM
-
-"""
 import numpy as np
 
 class PiecewisePolynomial(object):
-    """
-    Piecewise Polynomials a different way
-    
-    The SciPy Poly class defines a function from
-    polynomials with coefficents c and breakpoints x
-    evaluated at a point xp thus:
-    
-       S = sum(c[m, i] * (xp - x[i])**(k-m) for m in range(k+1))
-    
-    This is not helpful for PREM, so we create a new class defining
-    the function:
-    
-       S = sum(c[m, i] * (xp - x[i])**(k-m) for m in range(k+1))
-      
-    Note some important differences between this and PPoly!
-    """
-    
+    #create a new class defining the function: S = sum(c[m, i] * (xp - x[i])**(k-m) for m in range(k+1))
     def __init__(self, c, x):
-        assert len(x.shape)==1, "breakpoints must be 1D"
+        assert len(x.shape)==1, "breakpoints- 1D"
         self.breakpoints = x 
         if len(c.shape)==1:
             c = np.expand_dims(c, axis=1)
             c = np.append(c,np.zeros_like(c), axis=1)
-        assert len(c.shape)==2, "breakpoints must be 2D"
+        assert len(c.shape)==2, "breakpoints- 2D"
         self.coeffs = c
         
         
@@ -44,9 +25,7 @@ class PiecewisePolynomial(object):
         
         
     def _evaluate_at_point(self, x, break_down=False):
-        """
-        Evaluate piecewise polynomal at point x
-        """
+        #Evaluate at x
         coef = self._get_coefs(x, break_down)
         value = self._evaluate_polynomial(x, coef)
         return value
@@ -60,15 +39,7 @@ class PiecewisePolynomial(object):
         
         
     def _get_coefs(self, x, break_down=False):
-        """
-        Return coefs at x
-        
-        If x falls on a breakpoint, we take the coeffecents from 
-        'above' the breakpoint. Unless break_down is True, in which
-        case we take the coeffecents from 'below'
-        """
         if x == self.breakpoints[-1]:
-            # We use the last coefficents for the outside point
             return self.coeffs[-1,:]
         if break_down:
             for i in range(self.breakpoints.size):
@@ -114,23 +85,17 @@ class PiecewisePolynomial(object):
     
     def integrate(self, a, b):
         
-        #antiderivative = self.antiderivative()
         integral = 0
         lower_bound = a
         for bpi, bp in enumerate(self.breakpoints):
             if bp > lower_bound:
                 if self.breakpoints[bpi] >= b:
-                    # Just the one segment left - add it and end
                     integral = integral + (self(b, break_down=True) - 
                                            self(lower_bound))
-                    #print(integral, lower_bound, b, 'done')
                     break
                 else:
-                    # segment from lower bound to bp
-                    # add it, increment lower_bound and contiue
                     integral = integral + (self(bp, break_down=True) - 
                                            self(lower_bound))
-                    #print(integral, lower_bound, bp)
                     lower_bound = bp
 
         return integral
@@ -138,7 +103,7 @@ class PiecewisePolynomial(object):
     
     def mult(self, other):
         assert self.coeffs.shape[0] == other.coeffs.shape[0], \
-                                     'different number of breakpoints'
+        #different number of breakpoints
         mult_breakpoints = self.breakpoints
         mult_coefs = np.zeros((self.coeffs.shape[0],
                                self.coeffs.shape[1]+other.coeffs.shape[1]))
