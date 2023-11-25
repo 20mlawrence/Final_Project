@@ -103,7 +103,7 @@ class PiecewisePolynomial(object):
     
     def mult(self, other):
         assert self.coeffs.shape[0] == other.coeffs.shape[0], \
-        #different number of breakpoints
+                                     'different number of breakpoints'
         mult_breakpoints = self.breakpoints
         mult_coefs = np.zeros((self.coeffs.shape[0],
                                self.coeffs.shape[1]+other.coeffs.shape[1]))

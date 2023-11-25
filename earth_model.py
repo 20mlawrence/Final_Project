@@ -149,6 +149,29 @@ class Prem(object):
         vs = self.vs_poly(r) * 1000.0 # m/s
         density = self.density_poly(r)
         return (vs**2 * density) / 1e9     
+    
+    def temperature(self, depth):
+        # Evaluate temperature (in Celsius) at a given depth (in kilometers)
+        if depth <= 100:
+            return (depth * 14)
+        elif 100 < depth <= 250:
+            return (1400 + (depth - 100) * 2)
+        elif 250 < depth <= 1000:
+            if depth <= 1000:
+                return (1700 + (depth - 250) * 0.53)
+            elif depth <= 2000:
+                return (2100 + (depth - 1000) * 0.5)
+            else:
+                return (2600 + (depth - 2000) * 1.35)
+        elif 2890 >= depth > 1000:
+            return (3800 + (depth - 2890) * 0.72)
+        elif 5100 >= depth > 2890:
+            if depth <= 4000:
+                return (4600 + (depth - 2890) * 0.72)
+            elif depth <= 5100:
+                return (5000 + (depth - 4000) * 0.36)
+        else:
+            return 5000  # Inner core temperature
 
     def mass(self, r, r_inner=0.0):
         #Evaluate mass inside radius r (in km)
