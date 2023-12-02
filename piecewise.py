@@ -3,14 +3,14 @@
 import numpy as np
 
 class PiecewisePolynomial(object):
-    #create a new class defining the function: S = sum(c[m, i] * (xp - x[i])**(k-m) for m in range(k+1))
+    #create class defining S = sum(c[m, i] * (xp - x[i])**(k-m) for m in (k+1))
     def __init__(self, c, x):
-        assert len(x.shape)==1, "breakpoints- 1D"
+        assert len(x.shape)==1, "1D breakpoints"
         self.breakpoints = x 
         if len(c.shape)==1:
             c = np.expand_dims(c, axis=1)
             c = np.append(c,np.zeros_like(c), axis=1)
-        assert len(c.shape)==2, "breakpoints- 2D"
+        assert len(c.shape)==2, "2D breakpoints"
         self.coeffs = c
         
         
@@ -25,7 +25,7 @@ class PiecewisePolynomial(object):
         
         
     def _evaluate_at_point(self, x, break_down=False):
-        #Evaluate at x
+        # evaluate at x
         coef = self._get_coefs(x, break_down)
         value = self._evaluate_polynomial(x, coef)
         return value
@@ -63,7 +63,7 @@ class PiecewisePolynomial(object):
         for seg in range(self.coeffs.shape[0]):
             for i in range(self.coeffs.shape[1]):
                 if i == 0:
-                    continue # Throw away term for x**0
+                    continue 
                 deriv_coeffs[seg,i-1] = self.coeffs[seg,i]*i
                 
         deriv = PiecewisePolynomial(deriv_coeffs, deriv_breakpoints)

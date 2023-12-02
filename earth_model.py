@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 # coding=utf8
 
-## Support for PREM-like 1D Earth models
-
-
 import numpy as np
 import scipy.integrate as spint
 
 import piecewise as pp
 
 
-# Default parameters for isotropic PREM
+# parameters for isotropic PREM
 _r_earth = 6371.0
 _bps = np.array([0.0, 1221.5, 3480.0, 3630.0, 5600.0, 5701.0, 5771.0,
                  5971.0, 6151.0, 6291.0, 6346.6, 6356.0, 6371.0])
@@ -54,11 +51,11 @@ _vs_params = np.array([[ 3.6678,   0.0000,  -4.4475,  0.0000],
                       [ 2.1519,   2.3481,   0.0000,  0.0000],
                       [ 3.9000,   0.0000,   0.0000,  0.0000],
                       [ 3.2000,   0.0000,   0.0000,  0.0000]])
-# Turn range of polynomials from 0 - 1 to 0 - r_earth
+# 0 - 1 to 0 - r_earth
 _vp_params[:,1] = _vp_params[:,1] / _r_earth 
 _vp_params[:,2] = _vp_params[:,2] / (_r_earth**2)
 _vp_params[:,3] = _vp_params[:,3] / (_r_earth**3)
-# Turn range of polynomials from 0 - 1 to 0 - r_earth
+
 _vs_params[:,1] = _vs_params[:,1] / _r_earth 
 _vs_params[:,2] = _vs_params[:,2] / (_r_earth**2)
 _vs_params[:,3] = _vs_params[:,3] / (_r_earth**3)
@@ -83,31 +80,31 @@ class Prem(object):
         self.qk_poly = pp.PiecewisePolynomial(q_kappa_params, breakpoints)
         self.qm_poly = pp.PiecewisePolynomial(q_mu_params, breakpoints)
         
-        # setup polynomials for mass - 4*pi*int rho(r)*r^2 dr
+        # mass = 4*pi*int rho(r)*r^2 dr
         r2_params = np.tile(np.array([0.0, 0.0, 1000.0**3]),
                             (breakpoints.size-1,1))
         r2_poly = pp.PiecewisePolynomial(r2_params, breakpoints)
         self.mass_poly = self.density_poly.mult(r2_poly)
         self.mass_poly = self.mass_poly.antiderivative()
-        # mass:
+        
         self.mass_poly.coeffs = self.mass_poly.coeffs * 4.0 * np.pi
         
-        # setup polynomials for MOI. This is 2/3*4*pi*\int rho(r)*r^4 dr
+        # moment of inertia: 2/3*4*pi*\int rho(r)*r^4 dr
         r4_params = np.tile(np.array([0.0,  0.0, 0.0, 0.0, 1000.0**5]),
                             (breakpoints.size-1,1))
         r4_poly = pp.PiecewisePolynomial(r4_params, breakpoints)
         self.moi_poly = self.density_poly.mult(r4_poly) 
         self.moi_poly = self.moi_poly.antiderivative()
-        # integrating this gives MOI:
+        # MOI:
         self.moi_poly.coeffs = self.moi_poly.coeffs * 4.0 * (2/3) * np.pi  
         
     def density(self, r, break_down=False):
-        #Evaluate density in kg/m**3 at radii r (in km)
+        # density (kg/m^3)
         return self.density_poly(r, break_down=break_down)
 
     def vs(self, r, t=1, break_down=False):
-        #Evaluate s-wave velocity (in km/s) at radius r (in km).
-        #Optionally corrected for period (t), default is 1 s.
+        # s-wave velocity
+        # period (t) default is 1 s
         vs = self.vs_poly(r, break_down=break_down)
         if t != 1:
             qm = self.qm_poly(r, break_down=break_down)
@@ -116,9 +113,8 @@ class Prem(object):
         return vs
     
     def vp(self, r, t=1, break_down=False):
-        #Evaluate p-wave velocity (in km/s) at radius r (in km).
-
-        #Optionally corrected for period (t), default is 1 s.
+        #p-wave velocity (km/s)
+        # period (t) is 1 s
         vp = self.vp_poly(r, break_down=break_down)
         if t != 1:
             qm = self.qm_poly(r, break_down=break_down)
@@ -138,20 +134,20 @@ class Prem(object):
         return qm
 
     def bulk_modulus(self, r):
-        #Evaluate bulk modulus (in GPa) at radius r (in km)
+        # bulk modulus (Gpa)
         vp = self.vp_poly(r) * 1000.0 # m/s
         mu = self.shear_modulus(r)
         density = self.density_poly(r)
         return ((vp**2 * density) / 1e9) - mu
 
     def shear_modulus(self, r):
-        #Evaluate shear modulus (in GPa) at radius r (in km)
+        # shear modulus (GPa)
         vs = self.vs_poly(r) * 1000.0 # m/s
         density = self.density_poly(r)
         return (vs**2 * density) / 1e9     
     
     def temperature(self, depth):
-        # Evaluate temperature (in Celsius) at a given depth (in kilometers)
+        # temperature (Celsius)
         if depth <= 100:
             return (depth * 14)
         elif 100 < depth <= 250:
@@ -171,10 +167,10 @@ class Prem(object):
             elif depth <= 5100:
                 return (5000 + (depth - 4000) * 0.36)
         else:
-            return 5000  # Inner core temperature
+            return 5000  
 
     def mass(self, r, r_inner=0.0):
-        #Evaluate mass inside radius r (in km)
+        # mass
         if np.ndim(r) == 0:
             m = self.mass_poly.integrate(r_inner,r)
         else:
@@ -187,12 +183,7 @@ class Prem(object):
         return m
     
     def moment_or_inertia(self, r, r_inner=0.0):
-        #Evaluate moment of inertia inside radius r (in km)
-        
-        #Return a tuple of moment of inertia (in kg m^2) and
-        #the moment of inertia factor (I/MR**2, dimensionless)
-        #which is 0.4 for a uniform density body, and decreases
-        #as the core becomes more dense than the crust/mantle.
+        #moment of inertia (I/MR**2, dimensionless)
 
         if np.ndim(r) == 0:
             moi = self.moi_poly.integrate(r_inner,r)
@@ -210,7 +201,7 @@ class Prem(object):
         return moi, moif
     
     def gravity(self, r):
-        #Evaluate acceleration due to gravity at radius r in m/s^2
+        # acceleration due to gravity m/s^2
         G = 6.6743E-11
         if np.ndim(r) == 0:
             g = self.mass_poly.integrate(0.0,r)/((r*1000)**2)*G
@@ -225,11 +216,8 @@ class Prem(object):
         return g
     
     def pressure(self, r):
-        #Evaluate pressure (in GPa) at radius r (in km)
-        # NB: this is done numerically, because otherise
-        # I need to work out how to express g as a polynomial,
-        # multiply this by rho, then do the integral inwards.
-        # all a bit of a faff!
+        # pressure (GPa)
+
         if np.ndim(r) == 0:
             # 10 km grid spacing
             rs = np.arange(r, self.r_earth, 1.0)
@@ -238,204 +226,10 @@ class Prem(object):
             ps = spint.cumtrapz((-g*rho)[::-1],rs[::-1]*1000.0, initial=0)
             pressure = ps[-1]/1E9
         else:
-            # Assume I have been fed something I can integrate
+            # integrate
             g = self.gravity(r)
             rho = self.density(r)
             pressure = spint.cumtrapz((-g*rho)[::-1],
                                       r[::-1]*1000.0, initial=0)
             pressure = pressure[::-1]/1E9
         return pressure
-
-    def tabulate_model_inwards(self, min_step):
-        """
-        Return a record array representing the model handling discontiuities
-
-        This method creates a numpy record array with the model evaulated
-        at all depths with a minimum spacing of min_step km. All breakpoints
-        are also included in the output. If the densioty is discontinuoius,
-        the depth is represented twice, first with the value above the 
-        discontiuity, then with the value below it. This representation can
-        be used to construct travel time curves (for examople).
-
-        The record array contains fields:
-
-            depth (in km)
-            radius (in km)
-            density (in kg/m^3)
-            qkappa (dimensionless quality factor)
-            qshear (dimensionless quality factor)
-
-        and is ordered such that element 0 is at the surface and the last
-        element (element -1) is at the center of the planet.
-        """
-        # Keep the data as we get it
-        radii = np.array([])
-        depths = np.array([])
-        densities = np.array([])
-        vps = np.array([])
-        vss = np.array([])
-        qks = np.array([])
-        qms = np.array([])
-
-        nbps = len(self.density_poly.breakpoints) -1
-        for i in range(nbps):
-            j = nbps - i
-            k = j - 1
-            rs = np.arange(self.density_poly.breakpoints[j], 
-                           self.density_poly.breakpoints[k], -min_step)
-            ds = self.r_earth - rs
-            dens = self.density(rs, break_down=True) # As we go inwards
-            vp = self.vp(rs, break_down=True) # As we go inwards
-            vs = self.vs(rs, break_down=True) # As we go inwards
-            qk = self.qkappa(rs, break_down=True) # As we go inwards
-            qm = self.qshear(rs, break_down=True) # As we go inwards
-            radii = np.append(radii, rs)
-            depths = np.append(depths, ds)
-            densities = np.append(densities, dens)
-            vps = np.append(vps, vp)
-            vss = np.append(vss, vs)
-            qks = np.append(qks, qk)
-            qms = np.append(qms, qm)
-        
-            # Look at the breakpoint. If it is discontinous in 
-            # vJalue put add it here (i.e. so we have above followed 
-            # by below for the next step). Othersie we can skip it 
-            # (and it gets adder in the next iteration). But we need
-            # to hadle k = 0 carefully (always stick in the origin)
-            if k == 0:
-                # Add the value at r=0
-                rs = self.density_poly.breakpoints[k]
-                ds = self.r_earth - rs
-                dens = self.density(rs)
-                vp = self.vp(rs)
-                vs = self.vs(rs)
-                qk = self.qkappa(rs)
-                qm = self.qshear(rs)
-                radii = np.append(radii, rs)
-                depths = np.append(depths, ds)
-                densities = np.append(densities, dens) 
-                vps = np.append(vps, vp)
-                vss = np.append(vss, vs)
-                qks = np.append(qks, qk)
-                qms = np.append(qms, qm)
-            elif (self.density(self.density_poly.breakpoints[k]) != 
-                  self.density(self.density_poly.breakpoints[k], 
-                               break_down=True)):
-                # Add the value above the inner boundary of this layer
-                rs = self.density_poly.breakpoints[k]
-                ds = self.r_earth - rs
-                dens = self.density(rs)
-                vp = self.vp(rs)
-                vs = self.vs(rs)
-                qk = self.qkappa(rs)
-                qm = self.qshear(rs)
-                radii = np.append(radii, rs)
-                depths = np.append(depths, ds)
-                densities = np.append(densities, dens)
-                vps = np.append(vps, vp)
-                vss = np.append(vss, vs)
-                qks = np.append(qks, qk)
-                qms = np.append(qms, qm)
-            
-        result = np.core.records.fromarrays([depths, radii, densities,
-                                             vps, vss, qks, qms], 
-                      names='depth, radius, density, vp, vs, qkappa, qshear')
-        return result
-
-    def tabulate_model_outwards(self, min_step):
-        """
-        Return a record array representing the model handling discontiuities
-
-        This method creates a numpy record array with the model evaulated
-        at all depths with a minimum spacing of min_step km. All breakpoints
-        are also included in the output. If the densioty is discontinuoius,
-        the depth is represented twice, first with the value above the 
-        discontiuity, then with the value below it. This representation can
-        be used to construct travel time curves (for examople).
-
-        The record array contains fields:
-
-            depth (in km)
-            radius (in km)
-            density (in kg/m^3)
-            qkappa (dimensionless quality factor)
-            qshear (dimensionless quality factor)
-
-        and is ordered such that element 0 is at the center of the planet
-        and the last element (element -1) is at the surface.
-        """
-        
-        # Keep the data as we get it
-        radii = np.array([])
-        depths = np.array([])
-        densities = np.array([])
-        vps = np.array([])
-        vss = np.array([])
-        qks = np.array([])
-        qms = np.array([])
-
-        nbps = len(self.density_poly.breakpoints) - 1
-        for i in range(nbps):
-            j = i
-            k = j + 1
-            rs = np.arange(self.density_poly.breakpoints[j], 
-                           self.density_poly.breakpoints[k], min_step)
-            ds = self.r_earth - rs
-            dens = self.density(rs)
-            vp = self.vp(rs)
-            vs = self.vs(rs)
-            qk = self.qkappa(rs)
-            qm = self.qshear(rs)
-            radii = np.append(radii, rs)
-            depths = np.append(depths, ds)
-            densities = np.append(densities, dens)
-            vps = np.append(vps, vp)
-            vss = np.append(vss, vs)
-            qks = np.append(qks, qk)
-            qms = np.append(qms, qm)
-        
-            # Look at the breakpoint. If it is discontinous in 
-            # J value put add it here (i.e. so we have above followed 
-            # by below for the next step). Othersie we can skip it 
-            # (and it gets added in the next iteration). But we need
-            # to handle k = 0 carefully (always stick in the origin)
-            if k == nbps + 1:
-                # Add the value surface
-                rs = self.density_poly.breakpoints[k]
-                ds = self.r_earth - rs
-                dens = self.density(rs)
-                vp = self.vp(rs)
-                vs = self.vs(rs)
-                qk = self.qkappa(rs)
-                qm = self.qshear(rs)
-                radii = np.append(radii, rs)
-                depths = np.append(depths, ds)
-                densities = np.append(densities, dens) 
-                vps = np.append(vps, vp)
-                vss = np.append(vss, vs)
-                qks = np.append(qks, qk)
-                qms = np.append(qms, qm)
-            elif (self.density(self.density_poly.breakpoints[k]) != 
-                  self.density(self.density_poly.breakpoints[k], 
-                               break_down=True)):
-               
-                # Add the value above the inner boundary of this layer
-                rs = self.density_poly.breakpoints[k]
-                ds = self.r_earth - rs
-                dens = self.density(rs, break_down=True)
-                vp = self.vp(rs, break_down=True)
-                vs = self.vs(rs, break_down=True)
-                qk = self.qkappa(rs, break_down=True)
-                qm = self.qshear(rs, break_down=True)
-                radii = np.append(radii, rs)
-                depths = np.append(depths, ds)
-                densities = np.append(densities, dens)
-                vps = np.append(vps, vp)
-                vss = np.append(vss, vs)
-                qks = np.append(qks, qk)
-                qms = np.append(qms, qm)
-            
-        result = np.core.records.fromarrays([depths, radii, densities,
-                                             vps, vss, qks, qms], 
-                      names='depth, radius, density, vp, vs, qkappa, qshear')
-        return result
