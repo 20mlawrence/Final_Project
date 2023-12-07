@@ -5,12 +5,12 @@ import numpy as np
 class PiecewisePolynomial(object):
     #create class defining S = sum(c[m, i] * (xp - x[i])**(k-m) for m in (k+1))
     def __init__(self, c, x):
-        assert len(x.shape)==1, "1D breakpoints"
+        assert len(x.shape)==1, #1D breakpoints
         self.breakpoints = x 
         if len(c.shape)==1:
             c = np.expand_dims(c, axis=1)
             c = np.append(c,np.zeros_like(c), axis=1)
-        assert len(c.shape)==2, "2D breakpoints"
+        assert len(c.shape)==2, #2D breakpoints
         self.coeffs = c
         
         
